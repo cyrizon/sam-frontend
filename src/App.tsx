@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './styles/App.css';
 import Header from './components/Header';
 import RouteCalculationBox from './components/RouteCalculationBox';
 import RouteOptions from './components/RouteOptions';
 import MapView from './components/MapView';
 import MapDetails from './components/MapDetails';
+import { fetchHello } from './services/api'; // Import de la fonction API
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
@@ -18,6 +19,7 @@ const routesData: Record<string, RouteData> = {
 };
 
 function App() {
+  const [helloMessage, setHelloMessage] = useState<string>('');
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
   const [maxTolls, setMaxTolls] = useState<string>('');
@@ -26,6 +28,21 @@ function App() {
   const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
 
   const position: [number, number] = [48.8584, 2.2945]; // Tour Eiffel
+
+  useEffect(() => {
+    console.log("useEffect exécuté");
+    const fetchData = async () => {
+      try {
+        const message = await fetchHello();
+        setHelloMessage(message);
+        console.log("Message du serveur:", message);
+      } catch (error) {
+        console.error("Erreur lors de la récupération du message:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
