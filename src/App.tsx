@@ -5,10 +5,11 @@ import RouteCalculationBox from './components/RouteCalculationBox';
 import RouteOptions from './components/RouteOptions';
 import MapView from './components/MapView';
 import MapDetails from './components/MapDetails';
-import { fetchHello } from './services/api'; // Import de la fonction API
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
+import { fetchHello } from './services/api';
+import { fetchMockRoute } from './services/api'; 
 
 const routesData: Record<string, RouteData> = {
   fastest: { name: "Le plus rapide", distance: 320, duration: { hours: 3, minutes: 20 }, cost: 48.7, tolls: 3, color: 'blue', icon: 'bolt' },
@@ -19,6 +20,7 @@ const routesData: Record<string, RouteData> = {
 };
 
 function App() {
+  const [geoJSONData, setGeoJSONData] = useState<any>(null);
   const [helloMessage, setHelloMessage] = useState<string>('');
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
@@ -28,6 +30,21 @@ function App() {
   const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
 
   const position: [number, number] = [48.8584, 2.2945]; // Tour Eiffel
+
+  const handleFetchRoute = async () => {
+    try {
+      const data = await fetchMockRoute(); // Appel à l'API pour récupérer le GeoJSON
+      setGeoJSONData(data); // Mise à jour du state avec les données GeoJSON
+      console.log("Données GeoJSON récupérées :", data);
+    } catch (error) {
+      console.error("Erreur lors de la récupération du GeoJSON :", error);
+    }
+  };
+
+  const handleClearRoute = () => {
+    setGeoJSONData(null); // Réinitialise les données GeoJSON
+    console.log("Itinéraire vidé");
+  };
 
   useEffect(() => {
     console.log("useEffect exécuté");
@@ -57,6 +74,8 @@ function App() {
           setMaxTolls={setMaxTolls}
           loading={false}
           handleCalculate={() => handleCalculate(null)}
+          handleFetchRoute={handleFetchRoute}
+          handleClearRoute={handleClearRoute}
         />
         <RouteOptions
           routesData={routesData}
@@ -64,7 +83,7 @@ function App() {
           onSelectRoute={handleSelectRoute}
           customRoute={customRoute}
         />
-        <MapView position={position} />
+        <MapView position={position} geoJSONData={geoJSONData}/>
         <MapDetails route={customRoute} visible={mapDetailsVisible} />
       </main>
     </div>

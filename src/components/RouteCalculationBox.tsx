@@ -1,6 +1,6 @@
 import React from 'react';
 
-type RouteCalculationBoxProps = {
+interface RouteCalculationBoxProps {
   departure: string;
   setDeparture: (value: string) => void;
   destination: string;
@@ -9,7 +9,9 @@ type RouteCalculationBoxProps = {
   setMaxTolls: (value: string) => void;
   loading: boolean;
   handleCalculate: () => void;
-};
+  handleFetchRoute: () => void;
+  handleClearRoute: () => void;
+}
 
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   departure,
@@ -20,6 +22,8 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   setMaxTolls,
   loading,
   handleCalculate,
+  handleFetchRoute,
+  handleClearRoute,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -89,6 +93,26 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
           >
             <span>{loading ? 'Chargement...' : "Calculer l'itinéraire"}</span>
             {loading && <i className="fas fa-circle-notch animate-spin ml-2" />}
+          </button>
+        </div>
+
+        {/* Show mock route */}
+        <div>
+          <button
+            onClick={handleFetchRoute}
+            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition shadow-md flex items-center justify-center"
+          >
+            Afficher un itinéraire fictif
+          </button>
+        </div>
+
+        {/* Clear route */}
+        <div>
+          <button
+            onClick={handleClearRoute}
+            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
+          >
+            Vider l'itinéraire
           </button>
         </div>
       </div>
