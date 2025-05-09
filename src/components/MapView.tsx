@@ -1,11 +1,21 @@
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import TollMarker from './TollMarker';
+
+type Toll = {
+  id: number;
+  nom: string;
+  autoroute: string;
+  longitude: number;
+  latitude: number;
+};
 
 type MapViewProps = {
   position: [number, number];
   geoJSONData?: any;
+  tolls?: Toll[];
 };
 
-const MapView: React.FC<MapViewProps> = ({ position, geoJSONData }) => (
+const MapView: React.FC<MapViewProps> = ({ position, geoJSONData, tolls }) => (
   <div className="bg-white rounded-xl shadow-md p-6">
     <h2 className="text-xl font-semibold text-gray-800 mb-4">Visualisation de l'itinéraire</h2>
     <div className="relative" style={{ width: '100%', paddingBottom: '60%' }}>
@@ -24,6 +34,7 @@ const MapView: React.FC<MapViewProps> = ({ position, geoJSONData }) => (
             style={() => ({ color: '#ff7800', weight: 5, opacity: 0.65 })}
           />
         )}
+        {tolls && tolls.map((toll) => <TollMarker key={toll.id} toll={toll} />)}
       </MapContainer>
     </div>
   </div>

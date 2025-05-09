@@ -8,8 +8,7 @@ import MapDetails from './components/MapDetails';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
-import { fetchHello } from './services/api';
-import { fetchMockRoute } from './services/api'; 
+import { fetchHello, fetchMockRoute, fetchTolls } from './services/api';
 
 const routesData: Record<string, RouteData> = {
   fastest: { name: "Le plus rapide", distance: 320, duration: { hours: 3, minutes: 20 }, cost: 48.7, tolls: 3, color: 'blue', icon: 'bolt' },
@@ -25,6 +24,7 @@ function App() {
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
   const [maxTolls, setMaxTolls] = useState<string>('');
+  const [tollsData, setTollsData] = useState<any>(null);
 
   const { customRoute, handleCalculate } = useCalculateRoute(routesData);
   const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
@@ -44,6 +44,26 @@ function App() {
   const handleClearRoute = () => {
     setGeoJSONData(null); // Réinitialise les données GeoJSON
     console.log("Itinéraire vidé");
+  };
+
+  const handleFetchTolls = async () => {
+    try {
+      if (!geoJSONData) {
+        console.error("Aucun itinéraire disponible pour calculer les péages.");
+        return;
+      }
+
+      const tolls = await fetchTolls(geoJSONData); // Appel à l'API avec les données mock
+      setTollsData(tolls); // Mise à jour du state avec les données de péages
+      console.log("Données de péages récupérées :", tolls);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des péages :", error);
+    }
+  };
+
+  const handleClearTolls = () => {
+    setTollsData(null); // Réinitialise les données de péages
+    console.log("Données de péages vidées");
   };
 
   useEffect(() => {
@@ -76,6 +96,8 @@ function App() {
           handleCalculate={() => handleCalculate(null)}
           handleFetchRoute={handleFetchRoute}
           handleClearRoute={handleClearRoute}
+          handleFetchTolls={handleFetchTolls}
+          handleClearTolls={handleClearTolls}
         />
         <RouteOptions
           routesData={routesData}
@@ -83,7 +105,7 @@ function App() {
           onSelectRoute={handleSelectRoute}
           customRoute={customRoute}
         />
-        <MapView position={position} geoJSONData={geoJSONData}/>
+        <MapView position={position} geoJSONData={geoJSONData} tolls={tollsData} />
         <MapDetails route={customRoute} visible={mapDetailsVisible} />
       </main>
     </div>

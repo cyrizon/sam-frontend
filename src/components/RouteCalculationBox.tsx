@@ -11,6 +11,8 @@ interface RouteCalculationBoxProps {
   handleCalculate: () => void;
   handleFetchRoute: () => void;
   handleClearRoute: () => void;
+  handleFetchTolls: () => void;
+  handleClearTolls: () => void;
 }
 
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
@@ -24,6 +26,8 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   handleCalculate,
   handleFetchRoute,
   handleClearRoute,
+  handleFetchTolls,
+  handleClearTolls,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -68,7 +72,7 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
         {/* Toll Constraints */}
         <div>
           <label htmlFor="max-tolls" className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre maximum de péages (optionnel)
+            Nombre maximum d'entrées-sorties de péages (optionnel)
           </label>
           <div className="relative">
             <input
@@ -113,6 +117,26 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
             className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
           >
             Vider l'itinéraire
+          </button>
+        </div>
+
+        {/* Show tolls on route */}
+        <div>
+          <button
+            onClick={handleFetchTolls}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition shadow-md flex items-center justify-center"
+          >
+            Afficher les péages
+          </button>
+        </div>
+
+        {/* Clear tolls */}
+        <div>
+          <button
+            onClick={handleClearTolls}
+            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
+          >
+            Vider la liste des péages
           </button>
         </div>
       </div>
