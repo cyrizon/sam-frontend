@@ -38,3 +38,14 @@ export const fetchTolls = async (mockData: any): Promise<any> => {
         return `Erreur lors de l'appel à /api/tolls: ${error}`;
     }
 };
+
+// Fonction pour appeler l'endpoint /api/test-ors
+export const fetchORSRoute = async (): Promise<any> => {
+    return fetch("/api/test-ors").then(
+        res => res.json()
+    ).then(
+        data => data
+    ).catch(
+        error => `Erreur lors de l'appel à /api/test-ors: ${error}`
+    );
+}

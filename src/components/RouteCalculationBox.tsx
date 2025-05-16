@@ -13,6 +13,7 @@ interface RouteCalculationBoxProps {
   handleClearRoute: () => void;
   handleFetchTolls: () => void;
   handleClearTolls: () => void;
+  handleFetchOrs: () => void;
 }
 
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
@@ -28,6 +29,7 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   handleClearRoute,
   handleFetchTolls,
   handleClearTolls,
+  handleFetchOrs,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -137,6 +139,15 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
             className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
           >
             Vider la liste des péages
+          </button>
+        </div>
+        {/* Test ors */}
+        <div>
+          <button
+            onClick={handleFetchOrs}
+            className="w-full bg-yellow-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-700 transition shadow-md flex items-center justify-center"
+          >
+            Test ORS
           </button>
         </div>
       </div>

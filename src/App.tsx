@@ -8,7 +8,7 @@ import MapDetails from './components/MapDetails';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
-import { fetchHello, fetchMockRoute, fetchTolls } from './services/api';
+import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute } from './services/api';
 
 const routesData: Record<string, RouteData> = {
   fastest: { name: "Le plus rapide", distance: 320, duration: { hours: 3, minutes: 20 }, cost: 48.7, tolls: 3, color: 'blue', icon: 'bolt' },
@@ -66,6 +66,16 @@ function App() {
     console.log("Données de péages vidées");
   };
 
+  const handleFetchOrs = async () => {
+    try {
+      const data = await fetchORSRoute(); // Appel à l'API pour récupérer le GeoJSON
+      setGeoJSONData(data); // Mise à jour du state avec les données GeoJSON
+      console.log("Données GeoJSON récupérées :", data);
+    } catch (error) {
+      console.error("Erreur lors de la récupération du GeoJSON :", error);
+    }
+  }
+
   useEffect(() => {
     console.log("useEffect exécuté");
     const fetchData = async () => {
@@ -98,6 +108,7 @@ function App() {
           handleClearRoute={handleClearRoute}
           handleFetchTolls={handleFetchTolls}
           handleClearTolls={handleClearTolls}
+          handleFetchOrs={handleFetchOrs}
         />
         <RouteOptions
           routesData={routesData}

@@ -28,6 +28,9 @@ const TollMarker: React.FC<TollMarkerProps> = ({ toll }) => (
             <div className="text-sm">
                 <p className="font-semibold">{toll.nom || 'Péage sans nom'}</p>
                 {toll.autoroute && <p>Autoroute : {toll.autoroute}</p>}
+                <p>Longitude : {toll.longitude}</p>
+                <p>Latitude : {toll.latitude}</p>
+                <p>ID : {toll.id}</p>
             </div>
         </Popup>
     </Marker>
