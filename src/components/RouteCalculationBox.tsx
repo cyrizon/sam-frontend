@@ -1,10 +1,23 @@
 import React from 'react';
+import AutocompleteInput from './AutocompleteInput';
 
 interface RouteCalculationBoxProps {
   departure: string;
   setDeparture: (value: string) => void;
+  departureSuggestions: any[];
+  setDepartureSuggestions: (s: any[]) => void;
+  departureAutocompleteLoading: boolean;
+  departureSelected: boolean;
+  setDepartureSelected: (b: boolean) => void;
+  setDepartureFeature: (feature: any) => void; // <-- added
   destination: string;
   setDestination: (value: string) => void;
+  destinationSuggestions: any[];
+  setDestinationSuggestions: (s: any[]) => void;
+  destinationAutocompleteLoading: boolean;
+  destinationSelected: boolean;
+  setDestinationSelected: (b: boolean) => void;
+  setDestinationFeature: (feature: any) => void; // <-- added
   maxTolls: string;
   setMaxTolls: (value: string) => void;
   loading: boolean;
@@ -19,8 +32,20 @@ interface RouteCalculationBoxProps {
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   departure,
   setDeparture,
+  departureSuggestions,
+  setDepartureSuggestions,
+  departureAutocompleteLoading,
+  departureSelected,
+  setDepartureSelected,
+  setDepartureFeature, // <-- added
   destination,
   setDestination,
+  destinationSuggestions,
+  setDestinationSuggestions,
+  destinationAutocompleteLoading,
+  destinationSelected,
+  setDestinationSelected,
+  setDestinationFeature, // <-- added
   maxTolls,
   setMaxTolls,
   loading,
@@ -36,40 +61,40 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Calcul d'itinéraire</h2>
       <div className="space-y-4">
         {/* Départ */}
-        <div>
-          <label htmlFor="departure" className="block text-sm font-medium text-gray-700 mb-1">
-            Départ
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              id="departure"
-              placeholder="Ville de départ"
-              className="w-full pl-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={departure}
-              onChange={(e) => setDeparture(e.target.value)}
-            />
-            <i className="fas fa-map-marker-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
-          </div>
-        </div>
+        <AutocompleteInput
+          label="Départ"
+          id="departure"
+          placeholder="Ville de départ"
+          value={departure}
+          onChange={setDeparture}
+          suggestions={departureSuggestions}
+          loading={departureAutocompleteLoading}
+          selected={departureSelected}
+          onSelectSuggestion={(feature: any) => {
+            setDeparture(feature.properties.label);
+            setDepartureSelected(true);
+            setDepartureSuggestions([]);
+            setDepartureFeature(feature); // <-- stocke la feature complète
+          }}
+        />
 
         {/* Destination */}
-        <div>
-          <label htmlFor="destination" className="block text-sm font-medium text-gray-700 mb-1">
-            Destination
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              id="destination"
-              placeholder="Ville d'arrivée"
-              className="w-full pl-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-            />
-            <i className="fas fa-flag-checkered icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
-          </div>
-        </div>
+        <AutocompleteInput
+          label="Destination"
+          id="destination"
+          placeholder="Ville d'arrivée"
+          value={destination}
+          onChange={setDestination}
+          suggestions={destinationSuggestions}
+          loading={destinationAutocompleteLoading}
+          selected={destinationSelected}
+          onSelectSuggestion={(feature: any) => {
+            setDestination(feature.properties.label);
+            setDestinationSelected(true);
+            setDestinationSuggestions([]);
+            setDestinationFeature(feature); // <-- stocke la feature complète
+          }}
+        />
 
         {/* Toll Constraints */}
         <div>
