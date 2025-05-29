@@ -33,12 +33,14 @@ export const fetchRouteTollFree = async (
 
 // Fonction pour appeler l'endpoint /api/tolls
 export const fetchTolls = async (mockData: any): Promise<any> => {
+    // Toujours envoyer un tableau de GeoJSON
+    const dataToSend = Array.isArray(mockData) ? mockData : [mockData];
     return apiFetch<any>("/api/tolls", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(mockData),
+        body: JSON.stringify(dataToSend),
     });
 };
 
@@ -46,6 +48,37 @@ export const fetchTolls = async (mockData: any): Promise<any> => {
 export const fetchORSRoute = async (): Promise<any> => {
     return apiFetch<any>("/api/test-ors");
 };
+
+// Fonction pour appeler l'endpoint /api/test-ors-post
+export const fetchORSRoutePost = async (): Promise<any> => {
+    return apiFetch<any>("/api/test-ors-post", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: "{}",
+    });
+};
+
+// Fonction pour appeler l'endpoint /api/smart-route
+export const fetchSmartRoute = async (): Promise<any> => {
+    return apiFetch<any>("/api/smart-route", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            coordinates: [
+                [7.448595, 48.262004],
+                [5.037793, 47.317743]
+            ],
+            max_tolls: 99,
+            vehicle_class: "c1"
+        }),
+    }
+    );
+};
+
 
 // Fonction pour appeler l'endpoint /api/geocode/search
 export const geocodeSearch = async (text: string): Promise<any> => {

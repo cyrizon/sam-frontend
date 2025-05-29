@@ -27,6 +27,8 @@ interface RouteCalculationBoxProps {
   handleFetchTolls: () => void;
   handleClearTolls: () => void;
   handleFetchOrs: () => void;
+  handleFetchOrsPost: () => void;
+  handleFetchSmartRoute: () => void;
 }
 
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
@@ -55,6 +57,8 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   handleFetchTolls,
   handleClearTolls,
   handleFetchOrs,
+  handleFetchOrsPost,
+  handleFetchSmartRoute,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -173,6 +177,24 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
             className="w-full bg-yellow-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-700 transition shadow-md flex items-center justify-center"
           >
             Test ORS
+          </button>
+        </div>
+        {/* Test ORS POST */}
+        <div>
+          <button
+            onClick={handleFetchOrsPost}
+            className="w-full bg-yellow-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-800 transition shadow-md flex items-center justify-center"
+          >
+            Test ORS POST
+          </button>
+        </div>
+        {/* Test Smart Route */}
+        <div>
+          <button
+            onClick={handleFetchSmartRoute}
+            className="w-full bg-indigo-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-800 transition shadow-md flex items-center justify-center"
+          >
+            Test Smart Route
           </button>
         </div>
       </div>

@@ -8,8 +8,9 @@ import MapDetails from './components/MapDetails';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
-import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
+import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, fetchORSRoutePost, fetchSmartRoute, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
 import { parseRouteToGeoJSON } from './utils/parseRouteToGeoJSON';
+import proj4 from "proj4";
 
 const routesData: Record<string, RouteData> = {
   fastest: { name: "Le plus rapide", distance: 320, duration: { hours: 3, minutes: 20 }, cost: 48.7, tolls: 3, color: 'blue', icon: 'bolt' },
@@ -19,8 +20,12 @@ const routesData: Record<string, RouteData> = {
   light: { name: "Péage léger (25%)", distance: 370, duration: { hours: 4, minutes: 5 }, cost: 36.8, tolls: 1, color: 'purple', icon: 'leaf' },
 };
 
+// Définition des projections
+const lambert93 = "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
+const wgs84 = "EPSG:4326";
+
 function App() {
-  const [geoJSONData, setGeoJSONData] = useState<any>(null);
+  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   const [helloMessage, setHelloMessage] = useState<string>('');
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
@@ -44,6 +49,8 @@ function App() {
 
   const position: [number, number] = [48.8584, 2.2945]; // Tour Eiffel
 
+  console.log(tollsData);
+
   const handleFetchRoute = async () => {
     setError(null);
     try {
@@ -51,10 +58,12 @@ function App() {
       console.log("Données de l'itinéraire :", data);
 
       const geojson = parseRouteToGeoJSON(data);
-      if (geojson) {
+      if (Array.isArray(geojson)) {
         setGeoJSONData(geojson);
+      } else if (geojson) {
+        setGeoJSONData([geojson]);
       } else {
-        setGeoJSONData(null);
+        setGeoJSONData([]);
         setError("Format de données d'itinéraire inconnu.");
       }
     } catch (error: any) {
@@ -63,21 +72,39 @@ function App() {
   };
 
   const handleClearRoute = () => {
-    setGeoJSONData(null);
+    setGeoJSONData([]);
     setError(null);
     console.log("Itinéraire vidé");
   };
 
   const handleFetchTolls = async () => {
     setError(null);
-    if (!geoJSONData) {
+    let geojsonArray: any[] = [];
+    if (Array.isArray(geoJSONData)) {
+      geojsonArray = geoJSONData;
+    } else if (geoJSONData) {
+      geojsonArray = [geoJSONData];
+    }
+    if (!geojsonArray || geojsonArray.length === 0) {
       setError("Aucun itinéraire disponible pour calculer les péages.");
       return;
     }
     try {
-      const tolls = await fetchTolls(geoJSONData);
-      setTollsData(tolls);
-      console.log("Données de péages récupérées :", tolls);
+      const tolls = await fetchTolls(geojsonArray);
+
+      // Correction : conversion uniquement si nécessaire
+      const tollsWGS84 = tolls.map((toll: any) => {
+        const [longitude, latitude] = proj4(lambert93, wgs84, [toll.longitude, toll.latitude]);
+        return {
+          id: toll.id,
+          nom: toll.nom || toll.id || "Péage",
+          autoroute: toll.autoroute || "",
+          latitude,
+          longitude,
+        };
+      });
+
+      setTollsData(tollsWGS84);
     } catch (error: any) {
       setError(error.message);
     }
@@ -93,8 +120,57 @@ function App() {
     setError(null);
     try {
       const data = await fetchORSRoute();
-      setGeoJSONData(data);
+      const geojson = parseRouteToGeoJSON(data);
+      if (Array.isArray(geojson)) {
+        setGeoJSONData(geojson);
+      } else if (geojson) {
+        setGeoJSONData([geojson]);
+      } else {
+        setGeoJSONData([]);
+        setError("Format de données d'itinéraire inconnu.");
+      }
       console.log("Données GeoJSON récupérées :", data);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleFetchOrsPost = async () => {
+    setError(null);
+    try {
+      const data = await fetchORSRoutePost();
+      const geojsonArray = parseRouteToGeoJSON(data);
+      if (Array.isArray(geojsonArray)) {
+        setGeoJSONData(geojsonArray);
+      } else if (geojsonArray) {
+        setGeoJSONData([geojsonArray]);
+      } else {
+        setGeoJSONData([]);
+        setError("Format de données d'itinéraire inconnu.");
+      }
+      console.log("Données GeoJSON reçues (ORS POST):", data);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleFetchSmartRoute = async () => {
+    setError(null);
+    try {
+      const data = await fetchSmartRoute();
+      const geojsonArray: any[] = [];
+      Object.values(data).forEach((route: any) => {
+        if (route && route.type === "FeatureCollection") {
+          geojsonArray.push(route);
+        }
+      });
+      if (geojsonArray.length > 0) {
+        setGeoJSONData(geojsonArray);
+      } else {
+        setGeoJSONData([]);
+        setError("Aucun itinéraire trouvé dans la réponse.");
+      }
+      console.log("Données GeoJSON reçues (Smart Route):", data);
     } catch (error: any) {
       setError(error.message);
     }
@@ -122,10 +198,12 @@ function App() {
       }
       console.log("Données de l'itinéraire :", data); 
       const geojson = parseRouteToGeoJSON(data);
-      if (geojson) {
+      if (Array.isArray(geojson)) {
         setGeoJSONData(geojson);
+      } else if (geojson) {
+        setGeoJSONData([geojson]);
       } else {
-        setGeoJSONData(null);
+        setGeoJSONData([]);
         setError("Format de données d'itinéraire inconnu.");
       }
     } catch (error: any) {
@@ -224,6 +302,8 @@ function App() {
           handleFetchTolls={handleFetchTolls}
           handleClearTolls={handleClearTolls}
           handleFetchOrs={handleFetchOrs}
+          handleFetchOrsPost={handleFetchOrsPost}
+          handleFetchSmartRoute={handleFetchSmartRoute}
         />
         <RouteOptions
           routesData={routesData}
