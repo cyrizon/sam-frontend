@@ -35,6 +35,7 @@ export const fetchRouteTollFree = async (
 export const fetchTolls = async (mockData: any): Promise<any> => {
     // Toujours envoyer un tableau de GeoJSON
     const dataToSend = Array.isArray(mockData) ? mockData : [mockData];
+    console.log("Sending data to /api/tolls:", dataToSend);
     return apiFetch<any>("/api/tolls", {
         method: "POST",
         headers: {
@@ -72,7 +73,7 @@ export const fetchSmartRoute = async (): Promise<any> => {
                 [7.448595, 48.262004],
                 [5.037793, 47.317743]
             ],
-            max_tolls: 99,
+            max_tolls: 2,
             vehicle_class: "c1"
         }),
     }

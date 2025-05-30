@@ -8,6 +8,7 @@ import MapDetails from './components/MapDetails';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
+import type { Toll } from './types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
 import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, fetchORSRoutePost, fetchSmartRoute, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
 import { parseRouteToGeoJSON } from './utils/parseRouteToGeoJSON';
 import proj4 from "proj4";
@@ -92,18 +93,16 @@ function App() {
     try {
       const tolls = await fetchTolls(geojsonArray);
 
-      // Correction : conversion uniquement si nécessaire
-      const tollsWGS84 = tolls.map((toll: any) => {
-        const [longitude, latitude] = proj4(lambert93, wgs84, [toll.longitude, toll.latitude]);
-        return {
+      // Correction : gérer une liste de listes
+      const tollsWGS84 = tolls.map((tollList: any[]) =>
+        tollList.map((toll: any) => ({
           id: toll.id,
           nom: toll.nom || toll.id || "Péage",
           autoroute: toll.autoroute || "",
-          latitude,
-          longitude,
-        };
-      });
-
+          latitude: toll.latitude ?? toll.lat,
+          longitude: toll.longitude ?? toll.lon,
+        }))
+      );
       setTollsData(tollsWGS84);
     } catch (error: any) {
       setError(error.message);
@@ -267,6 +266,15 @@ function App() {
     fetchData();
   }, []);
 
+  // Fusionne et déduplique les péages par id
+  const uniqueTolls: Toll[] = tollsData
+    ? Array.from(
+        new Map(
+          tollsData.flat().map((toll: any) => [toll.id, toll])
+        ).values()
+      ) as Toll[]
+    : [];
+
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
       <Header />
@@ -311,7 +319,11 @@ function App() {
           onSelectRoute={handleSelectRoute}
           customRoute={customRoute}
         />
-        <MapView position={position} geoJSONData={geoJSONData} tolls={tollsData} />
+        <MapView
+          position={position}
+          geoJSONData={geoJSONData}
+          tolls={uniqueTolls}
+        />
         <MapDetails route={customRoute} visible={mapDetailsVisible} />
       </main>
     </div>

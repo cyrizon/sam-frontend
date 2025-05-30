@@ -1,13 +1,6 @@
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import TollMarker from './TollMarker';
-
-type Toll = {
-  id: number;
-  nom: string;
-  autoroute: string;
-  longitude: number;
-  latitude: number;
-};
+import type { Toll } from '../types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
 
 type MapViewProps = {
   position: [number, number];

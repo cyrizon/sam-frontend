@@ -1,14 +1,7 @@
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import tollIconUrl from '../assets/toll-icon.svg';
-
-type Toll = {
-    id: number;
-    nom: string;
-    autoroute: string;
-    longitude: number;
-    latitude: number;
-};
+import type { Toll } from '../types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
 
 type TollMarkerProps = {
     toll: Toll;
