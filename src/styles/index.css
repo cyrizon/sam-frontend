@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+.leaflet-container {
+    z-index: 0 !important;
+}
+
+@theme {
+    --color-blue-50: #ebf8ff;
+    --color-blue-100: #bee3f8;
+    --color-blue-600: #3182ce;
+    --color-blue-800: #2c5282;
+
+    --color-green-50: #f0fff4;
+    --color-green-100: #c6f6d5;
+    --color-green-600: #38a169;
+    --color-green-800: #276749;
+
+    --color-red-50: #fff5f5;
+    --color-red-100: #fed7d7;
+    --color-red-600: #e53e3e;
+    --color-red-800: #742a2a;
+
+    --color-yellow-50: #fffff0;
+    --color-yellow-100: #fefcbf;
+    --color-yellow-600: #d69e2e;
+    --color-yellow-800: #975a16;
+
+    --color-purple-50: #faf5ff;
+    --color-purple-100: #e9d8fd;
+    --color-purple-600: #805ad5;
+    --color-purple-800: #553c9a;
+}
