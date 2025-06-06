@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, GeoJSON, Tooltip, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Tooltip } from 'react-leaflet';
 import TollMarker from './TollMarker';
 import type { Toll } from '../types/Toll';
 
@@ -9,7 +9,7 @@ type MapViewProps = {
 };
 
 // Couleurs par type d'itinéraire
-const routeColors = {
+const routeColors: Record<string, string> = {
   fastest: '#0074D9', // Bleu
   cheapest: '#2ECC40', // Vert 
   min_tolls: '#FF4136', // Rouge
@@ -38,7 +38,7 @@ const MapView: React.FC<MapViewProps> = ({ position, geoJSONData = [], tolls }) 
         <div className="mb-4 flex flex-wrap gap-4">
           {geoJSONData.map((feature, idx) => {
             const metadata = feature._metadata;
-            const routeType = metadata?.type || 'default';
+            const routeType = (metadata?.type as keyof typeof routeColors) || 'default';
             const color = metadata ? routeColors[routeType] : defaultColors[idx % defaultColors.length];
             
             return (
@@ -74,7 +74,7 @@ const MapView: React.FC<MapViewProps> = ({ position, geoJSONData = [], tolls }) 
           />
           {geoJSONData && geoJSONData.map && geoJSONData.map((feature, idx) => {
             const metadata = feature._metadata;
-            const routeType = metadata?.type || 'default';
+            const routeType = (metadata?.type as keyof typeof routeColors) || 'default';
             const color = metadata ? routeColors[routeType] : defaultColors[idx % defaultColors.length];
             
             return (
