@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import './styles/App.css';
 import Header from './components/Header';
 import RouteCalculationBox from './components/RouteCalculationBox';
@@ -10,9 +10,8 @@ import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
 import type { Toll } from './types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
-import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, fetchORSRoutePost, fetchSmartRouteTolls, fetchSmartRouteBudget, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
+import { fetchTolls, fetchSmartRouteTolls, fetchSmartRouteBudget, geocodeAutocomplete, fetchRoute } from './services/api';
 import { parseRouteToGeoJSON } from './utils/parseRouteToGeoJSON';
-import proj4 from "proj4";
 
 const routesData: Record<string, RouteData> = {
   fastest: { name: "Le plus rapide", distance: 320, duration: { hours: 3, minutes: 20 }, cost: 48.7, tolls: 3, color: 'blue', icon: 'bolt' },
@@ -22,13 +21,20 @@ const routesData: Record<string, RouteData> = {
   light: { name: "Péage léger (25%)", distance: 370, duration: { hours: 4, minutes: 5 }, cost: 36.8, tolls: 1, color: 'purple', icon: 'leaf' },
 };
 
-// Définition des projections
-const lambert93 = "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
-const wgs84 = "EPSG:4326";
+// Interface pour les données de smart route
+interface SmartRouteData {
+  route: any;
+  cost?: number;
+  duration?: number;
+  toll_count?: number;
+}
 
-function App() {
-  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
-  const [helloMessage, setHelloMessage] = useState<string>('');
+interface SmartRouteResponse {
+  status?: string;
+  [key: string]: SmartRouteData | string | undefined;
+}
+
+function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
   const [maxTolls, setMaxTolls] = useState<string>('');
@@ -48,7 +54,7 @@ function App() {
 
   const departureAutocompleteLoading = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destinationAutocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { customRoute, handleCalculate: calculateRoute } = useCalculateRoute(routesData);
+  const { customRoute } = useCalculateRoute(routesData);
   // Commenté car RouteOptions n'est plus utilisé
   // const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
   const { mapDetailsVisible } = useMap(); // On garde seulement mapDetailsVisible qui pourrait être utilisé
@@ -57,25 +63,6 @@ function App() {
 
   console.log(tollsData);
 
-  const handleFetchRoute = async () => {
-    setError(null);
-    try {
-      const data = await fetchMockRoute();
-      console.log("Données de l'itinéraire :", data);
-
-      const geojson = parseRouteToGeoJSON(data);
-      if (Array.isArray(geojson)) {
-        setGeoJSONData(geojson);
-      } else if (geojson) {
-        setGeoJSONData([geojson]);
-      } else {
-        setGeoJSONData([]);
-        setError("Format de données d'itinéraire inconnu.");
-      }
-    } catch (error: any) {
-      setError(error.message);
-    }
-  };
   const handleClearRoute = () => {
     setGeoJSONData([]);
     setSmartRouteData(null);
@@ -120,45 +107,8 @@ function App() {
     console.log("Données de péages vidées");
   };
 
-  const handleFetchOrs = async () => {
-    setError(null);
-    try {
-      const data = await fetchORSRoute();
-      const geojson = parseRouteToGeoJSON(data);
-      if (Array.isArray(geojson)) {
-        setGeoJSONData(geojson);
-      } else if (geojson) {
-        setGeoJSONData([geojson]);
-      } else {
-        setGeoJSONData([]);
-        setError("Format de données d'itinéraire inconnu.");
-      }
-      console.log("Données GeoJSON récupérées :", data);
-    } catch (error: any) {
-      setError(error.message);
-    }
-  };
 
-  const handleFetchOrsPost = async () => {
-    setError(null);
-    try {
-      const data = await fetchORSRoutePost();
-      const geojsonArray = parseRouteToGeoJSON(data);
-      if (Array.isArray(geojsonArray)) {
-        setGeoJSONData(geojsonArray);
-      } else if (geojsonArray) {
-        setGeoJSONData([geojsonArray]);
-      } else {
-        setGeoJSONData([]);
-        setError("Format de données d'itinéraire inconnu.");
-      }
-      console.log("Données GeoJSON reçues (ORS POST):", data);
-    } catch (error: any) {
-      setError(error.message);
-    }
-  };  
-  
-  const handleFetchSmartRoute = async () => {
+    const handleFetchSmartRoute = async () => {
     setError(null);
     if (!departureFeature || !destinationFeature) {
       setError("Veuillez sélectionner un point de départ et d'arrivée dans la liste.");
@@ -171,7 +121,7 @@ function App() {
     ];
     
     try {
-      let data;
+      let data: SmartRouteResponse;
       
       if (routeOptimizationType === 'tolls') {
         // Vérifier que le champ maxTolls n'est pas vide
@@ -207,9 +157,10 @@ function App() {
         for (const [key, routeData] of Object.entries(data)) {
           if (key === 'status') continue; // Ignorer le champ status
           
-          if (routeData && typeof routeData === 'object' && routeData.route) {
+          const smartRouteData = routeData as SmartRouteData;
+          if (smartRouteData && typeof smartRouteData === 'object' && smartRouteData.route) {
             // Créer un hash simple du tracé pour détecter les itinéraires identiques
-            const routeCoords = routeData.route.features?.[0]?.geometry?.coordinates;
+            const routeCoords = smartRouteData.route.features?.[0]?.geometry?.coordinates;
             const routeHash = JSON.stringify(routeCoords?.length);
             
             // N'ajouter que si l'itinéraire n'est pas déjà présent
@@ -218,12 +169,12 @@ function App() {
               
               // Ajouter des métadonnées à l'objet route
               const enrichedRoute = {
-                ...routeData.route,
+                ...smartRouteData.route,
                 _metadata: {
                   type: key, // fastest, cheapest, ou min_tolls
-                  cost: routeData.cost,
-                  duration: routeData.duration,
-                  toll_count: routeData.toll_count
+                  cost: smartRouteData.cost,
+                  duration: smartRouteData.duration,
+                  toll_count: smartRouteData.toll_count
                 }
               };
               
@@ -256,38 +207,61 @@ function App() {
     }
   };
 
-  const handleCalculate = async () => {
+
+  // Fonction combinée pour le calcul d'itinéraire optimisé
+  const handleCalculateOptimized = async () => {
     setError(null);
     if (!departureFeature || !destinationFeature) {
       setError("Veuillez sélectionner un point de départ et d'arrivée dans la liste.");
       return;
     }
-    const startCoords = departureFeature.geometry.coordinates;
-    const endCoords = destinationFeature.geometry.coordinates;
-    try {
-      let data;
-      if (!maxTolls) {
-        console.log("Calcul d'un itinéraire");
-        data = await fetchRoute(startCoords, endCoords);
-      } else if (maxTolls === "0") {
-        console.log("Calcul d'un itinéraire sans péage");
-        data = await fetchRouteTollFree([startCoords, endCoords]);
-      } else {
-        setError("La prise en compte du nombre de péage est en développement. Ne rien mettre dans le champ ou mettre 0 pour un itinéraire sans péage.");
-        return;
+    
+    // Vérifier s'il y a des contraintes
+    const hasConstraints = 
+      (routeOptimizationType === 'tolls' && maxTolls !== '') ||
+      (routeOptimizationType === 'budget' && (maxBudget !== '' || maxBudgetPercent !== ''));
+    
+    if (hasConstraints) {
+      // Utiliser la logique smart route
+      await handleFetchSmartRoute();
+    } else {
+      // Utiliser la logique de calcul classique et adapter pour les instructions
+      const startCoords = departureFeature.geometry.coordinates;
+      const endCoords = destinationFeature.geometry.coordinates;
+      try {
+        const data = await fetchRoute(startCoords, endCoords);
+        console.log("Données de l'itinéraire classique :", data);
+        
+        const geojson = parseRouteToGeoJSON(data);
+        if (Array.isArray(geojson)) {
+          setGeoJSONData(geojson);
+          // Adapter pour RouteInstructions - mettre dans le même format que smart route
+          setSmartRouteData({ 
+            itineraire: { 
+              route: geojson[0],
+              cost: null,
+              duration: geojson[0]?.features?.[0]?.properties?.segments?.[0]?.duration || null,
+              toll_count: null
+            } 
+          });
+        } else if (geojson) {
+          setGeoJSONData([geojson]);
+          setSmartRouteData({ 
+            itineraire: { 
+              route: geojson,
+              cost: null,
+              duration: geojson?.features?.[0]?.properties?.segments?.[0]?.duration || null,
+              toll_count: null
+            } 
+          });
+        } else {
+          setGeoJSONData([]);
+          setSmartRouteData(null);
+          setError("Format de données d'itinéraire inconnu.");
+        }
+      } catch (error: any) {
+        setError(error.message);
       }
-      console.log("Données de l'itinéraire :", data); 
-      const geojson = parseRouteToGeoJSON(data);
-      if (Array.isArray(geojson)) {
-        setGeoJSONData(geojson);
-      } else if (geojson) {
-        setGeoJSONData([geojson]);
-      } else {
-        setGeoJSONData([]);
-        setError("Format de données d'itinéraire inconnu.");
-      }
-    } catch (error: any) {
-      setError(error.message);
     }
   };
 
@@ -332,21 +306,6 @@ function App() {
       }, 400);
     }
   };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setError(null);
-      try {
-        const message = await fetchHello();
-        setHelloMessage(message);
-        console.log("Message du serveur:", message);
-      } catch (error: any) {
-        setError(error.message);
-      }
-    };
-    fetchData();
-  }, []);
-
   // Fusionne et déduplique les péages par id
   const uniqueTolls: Toll[] = tollsData
     ? Array.from(
@@ -559,14 +518,10 @@ function App() {
           setMaxBudgetPercent={setMaxBudgetPercent}
           routeOptimizationType={routeOptimizationType}
           setRouteOptimizationType={setRouteOptimizationType}
-          loading={false}
-          handleCalculate={handleCalculate}
-          handleFetchRoute={handleFetchRoute}
+          handleCalculateOptimized={handleCalculateOptimized}
           handleClearRoute={handleClearRoute}
           handleFetchTolls={handleFetchTolls}
           handleClearTolls={handleClearTolls}
-          handleFetchOrs={handleFetchOrs}
-          handleFetchOrsPost={handleFetchOrsPost}          handleFetchSmartRoute={handleFetchSmartRoute}
         />
         {/* Composant RouteOptions commenté car non utilisé
         <RouteOptions

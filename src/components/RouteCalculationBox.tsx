@@ -26,15 +26,10 @@ interface RouteCalculationBoxProps {
   setMaxBudgetPercent: (value: string) => void;
   routeOptimizationType: 'tolls' | 'budget';
   setRouteOptimizationType: (value: 'tolls' | 'budget') => void;
-  loading: boolean;
-  handleCalculate: () => void;
-  handleFetchRoute: () => void;
   handleClearRoute: () => void;
   handleFetchTolls: () => void;
   handleClearTolls: () => void;
-  handleFetchOrs: () => void;
-  handleFetchOrsPost: () => void;
-  handleFetchSmartRoute: () => void;
+  handleCalculateOptimized: () => void;
 }
 
 const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
@@ -62,15 +57,10 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   setMaxBudgetPercent,
   routeOptimizationType,
   setRouteOptimizationType,
-  loading,
-  handleCalculate,
-  handleFetchRoute,
   handleClearRoute,
   handleFetchTolls,
   handleClearTolls,
-  handleFetchOrs,
-  handleFetchOrsPost,
-  handleFetchSmartRoute,
+  handleCalculateOptimized,
 }) => {
   // Fonction pour valider les entrées numériques
   const validateNumberInput = (value: string, min: number, max: number | null): string => {
@@ -257,28 +247,21 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
                 <span>Laissez vide si vous utilisez un montant en euros</span>
               </p>
             </div>
-          </div>
-        )}
+          </div>        )}
 
-        {/* Calculate Button */}
+        {/* Bouton principal : Calculer itinéraire optimisé */}
         <div>
           <button
-            onClick={handleCalculate}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition shadow-md flex items-center justify-center"
-            disabled={loading}
+            onClick={handleCalculateOptimized}
+            className={`w-full py-4 px-4 rounded-lg font-medium transition shadow-md flex items-center justify-center gap-2 text-white ${
+              routeOptimizationType === 'tolls' 
+                ? 'bg-blue-600 hover:bg-blue-700' 
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
           >
-            <span>{loading ? 'Chargement...' : "Calculer l'itinéraire"}</span>
-            {loading && <i className="fas fa-circle-notch animate-spin ml-2" />}
-          </button>
-        </div>
-
-        {/* Show mock route */}
-        <div>
-          <button
-            onClick={handleFetchRoute}
-            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition shadow-md flex items-center justify-center"
-          >
-            Afficher un itinéraire fictif
+            <i className={`fas ${routeOptimizationType === 'tolls' ? 'fa-road' : 'fa-chart-line'} text-xl`}></i>
+            <span className="text-lg">Calculer itinéraire optimisé</span>
+            <i className="fas fa-arrow-right ml-1"></i>
           </button>
         </div>
 
@@ -309,38 +292,6 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
             className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
           >
             Vider la liste des péages
-          </button>
-        </div>
-        {/* Test ors */}
-        <div>
-          <button
-            onClick={handleFetchOrs}
-            className="w-full bg-yellow-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-700 transition shadow-md flex items-center justify-center"
-          >
-            Test ORS
-          </button>
-        </div>
-        {/* Test ORS POST */}
-        <div>
-          <button
-            onClick={handleFetchOrsPost}
-            className="w-full bg-yellow-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-800 transition shadow-md flex items-center justify-center"
-          >
-            Test ORS POST
-          </button>
-        </div>        {/* Smart Route Button */}
-        <div>
-          <button
-            onClick={handleFetchSmartRoute}
-            className={`w-full py-4 px-4 rounded-lg font-medium transition shadow-md flex items-center justify-center gap-2 text-white ${
-              routeOptimizationType === 'tolls' 
-                ? 'bg-blue-600 hover:bg-blue-700' 
-                : 'bg-green-600 hover:bg-green-700'
-            }`}
-          >
-            <i className={`fas ${routeOptimizationType === 'tolls' ? 'fa-road' : 'fa-chart-line'} text-xl`}></i>
-            <span className="text-lg">Calculer itinéraire optimisé</span>
-            <i className="fas fa-arrow-right ml-1"></i>
           </button>
         </div>
       </div>
