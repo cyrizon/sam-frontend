@@ -2,14 +2,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import './styles/App.css';
 import Header from './components/Header';
 import RouteCalculationBox from './components/RouteCalculationBox';
-import RouteOptions from './components/RouteOptions';
+// import RouteOptions from './components/RouteOptions'; // Commenté car non utilisé
 import MapView from './components/MapView';
 import MapDetails from './components/MapDetails';
+import RouteInstructions from './components/RouteInstructions';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
 import type { RouteData } from './types/RouteData';
 import type { Toll } from './types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
-import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, fetchORSRoutePost, fetchSmartRoute, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
+import { fetchHello, fetchMockRoute, fetchTolls, fetchORSRoute, fetchORSRoutePost, fetchSmartRouteTolls, fetchSmartRouteBudget, geocodeSearch, geocodeAutocomplete, fetchRoute, fetchRouteTollFree } from './services/api';
 import { parseRouteToGeoJSON } from './utils/parseRouteToGeoJSON';
 import proj4 from "proj4";
 
@@ -31,22 +32,26 @@ function App() {
   const [departure, setDeparture] = useState<string>('');
   const [destination, setDestination] = useState<string>('');
   const [maxTolls, setMaxTolls] = useState<string>('');
+  const [maxBudget, setMaxBudget] = useState<string>('');
+  const [maxBudgetPercent, setMaxBudgetPercent] = useState<string>('');
+  const [routeOptimizationType, setRouteOptimizationType] = useState<'tolls' | 'budget'>('tolls');
   const [tollsData, setTollsData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [departureSuggestions, setDepartureSuggestions] = useState<any[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [destinationSuggestions, setDestinationSuggestions] = useState<any[]>([]);
   const [destinationAutocompleteLoading, setDestinationAutocompleteLoading] = useState(false);
-  const [departureSelected, setDepartureSelected] = useState(false);
-  const [destinationSelected, setDestinationSelected] = useState(false);
+  const [departureSelected, setDepartureSelected] = useState(false);  const [destinationSelected, setDestinationSelected] = useState(false);
   const [departureFeature, setDepartureFeature] = useState<any | null>(null);
   const [destinationFeature, setDestinationFeature] = useState<any | null>(null);
+  const [smartRouteData, setSmartRouteData] = useState<any>(null); // Nouveau état pour les données brutes de smart-route
 
   const departureAutocompleteLoading = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destinationAutocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const { customRoute, handleCalculate: calculateRoute } = useCalculateRoute(routesData);
-  const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
+  // Commenté car RouteOptions n'est plus utilisé
+  // const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
+  const { mapDetailsVisible } = useMap(); // On garde seulement mapDetailsVisible qui pourrait être utilisé
 
   const position: [number, number] = [48.8584, 2.2945]; // Tour Eiffel
 
@@ -71,9 +76,9 @@ function App() {
       setError(error.message);
     }
   };
-
   const handleClearRoute = () => {
     setGeoJSONData([]);
+    setSmartRouteData(null);
     setError(null);
     console.log("Itinéraire vidé");
   };
@@ -151,25 +156,101 @@ function App() {
     } catch (error: any) {
       setError(error.message);
     }
-  };
-
+  };  
+  
   const handleFetchSmartRoute = async () => {
     setError(null);
+    if (!departureFeature || !destinationFeature) {
+      setError("Veuillez sélectionner un point de départ et d'arrivée dans la liste.");
+      return;
+    }
+    
+    const coords = [
+      departureFeature.geometry.coordinates,
+      destinationFeature.geometry.coordinates
+    ];
+    
     try {
-      const data = await fetchSmartRoute();
-      const geojsonArray: any[] = [];
-      Object.values(data).forEach((route: any) => {
-        if (route && route.type === "FeatureCollection") {
-          geojsonArray.push(route);
+      let data;
+      
+      if (routeOptimizationType === 'tolls') {
+        // Vérifier que le champ maxTolls n'est pas vide
+        if (maxTolls === '') {
+          setError("Veuillez spécifier un nombre maximum de péages.");
+          return;
         }
-      });
+        // Utiliser l'endpoint smart-route/tolls
+        data = await fetchSmartRouteTolls(coords, parseInt(maxTolls), 'c1');
+        console.log("Smart Route (Tolls) result:", data);
+      } else { // routeOptimizationType === 'budget'
+        // Vérifier qu'au moins un des champs de budget n'est pas vide
+        if (maxBudget === '' && maxBudgetPercent === '') {
+          setError("Veuillez spécifier soit un budget maximum en euros, soit un pourcentage.");
+          return;
+        }
+        // Utiliser l'endpoint smart-route/budget
+        const budget = maxBudget !== '' ? parseFloat(maxBudget) : undefined;
+        const budgetPercent = maxBudgetPercent !== '' ? parseFloat(maxBudgetPercent) : undefined;
+        data = await fetchSmartRouteBudget(coords, budget, budgetPercent, 'c1');
+        console.log("Smart Route (Budget) result:", data);
+      }
+      
+      // Nouveau traitement pour la structure de réponse avec métadonnées
+      const geojsonArray: any[] = [];
+      const uniqueRouteHashes = new Set(); // Pour éviter les doublons d'itinéraires identiques
+      
+      // Vérifier si les données ont la nouvelle structure (avec cost, duration, toll_count)
+      if (data.status) {
+        console.log(`Statut de la requête: ${data.status}`);
+        
+        // Parcourir les différentes options (fastest, cheapest, min_tolls)
+        for (const [key, routeData] of Object.entries(data)) {
+          if (key === 'status') continue; // Ignorer le champ status
+          
+          if (routeData && typeof routeData === 'object' && routeData.route) {
+            // Créer un hash simple du tracé pour détecter les itinéraires identiques
+            const routeCoords = routeData.route.features?.[0]?.geometry?.coordinates;
+            const routeHash = JSON.stringify(routeCoords?.length);
+            
+            // N'ajouter que si l'itinéraire n'est pas déjà présent
+            if (routeCoords && !uniqueRouteHashes.has(routeHash)) {
+              uniqueRouteHashes.add(routeHash);
+              
+              // Ajouter des métadonnées à l'objet route
+              const enrichedRoute = {
+                ...routeData.route,
+                _metadata: {
+                  type: key, // fastest, cheapest, ou min_tolls
+                  cost: routeData.cost,
+                  duration: routeData.duration,
+                  toll_count: routeData.toll_count
+                }
+              };
+              
+              geojsonArray.push(enrichedRoute);
+            }
+          }
+        }
+      } else {
+        // Ancien format (pour la rétrocompatibilité)
+        Object.values(data).forEach((route: any) => {
+          if (route && route.type === "FeatureCollection") {
+            geojsonArray.push(route);
+          }
+        });
+      }
+      
       if (geojsonArray.length > 0) {
         setGeoJSONData(geojsonArray);
+        console.log(`${geojsonArray.length} itinéraires uniques chargés`);
       } else {
         setGeoJSONData([]);
-        setError("Aucun itinéraire trouvé dans la réponse.");
+        setError("Aucun itinéraire trouvé ou tous les itinéraires sont identiques.");
       }
-      console.log("Données GeoJSON reçues (Smart Route):", data);
+      console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
+      
+      // Stocker les données brutes pour les instructions
+      setSmartRouteData(data);
     } catch (error: any) {
       setError(error.message);
     }
@@ -275,6 +356,176 @@ function App() {
       ) as Toll[]
     : [];
 
+  // Test data pour RouteInstructions
+  const addTestData = () => {
+    const testData = {
+      status: "success",
+      fastest: {
+        cost: 45.60,
+        duration: 12600, // 3h30 en secondes
+        toll_count: 3,
+        route: {
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
+            },
+            properties: {
+              segments: [{
+                steps: [
+                  {
+                    type: 11,
+                    instruction: "Départ de Paris",
+                    name: "Rue de Rivoli",
+                    distance: 0,
+                    duration: 0
+                  },
+                  {
+                    type: 1,
+                    instruction: "Tourner à droite sur Boulevard Saint-Germain",
+                    name: "Boulevard Saint-Germain",
+                    distance: 500,
+                    duration: 60
+                  },
+                  {
+                    type: 6,
+                    instruction: "Continuer tout droit sur A6 vers Lyon",
+                    name: "A6 - Autoroute du Soleil",
+                    distance: 350000,
+                    duration: 10800
+                  },
+                  {
+                    type: 5,
+                    instruction: "Prendre légèrement à droite vers A7",
+                    name: "A7",
+                    distance: 120000,
+                    duration: 1200
+                  },
+                  {
+                    type: 10,
+                    instruction: "Vous êtes arrivé à destination",
+                    name: "Place Bellecour",
+                    distance: 100,
+                    duration: 30
+                  }
+                ]
+              }]
+            }
+          }]
+        }
+      },
+      cheapest: {
+        cost: 32.40,
+        duration: 14400, // 4h en secondes
+        toll_count: 1,
+        route: {
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: {
+              type: "LineString", 
+              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
+            },
+            properties: {
+              segments: [{
+                steps: [
+                  {
+                    type: 11,
+                    instruction: "Départ de Paris",
+                    name: "Rue de Rivoli",
+                    distance: 0,
+                    duration: 0
+                  },
+                  {
+                    type: 0,
+                    instruction: "Tourner à gauche sur les Quais de Seine",
+                    name: "Quai de la Mégisserie",
+                    distance: 800,
+                    duration: 120
+                  },
+                  {
+                    type: 6,
+                    instruction: "Prendre la N7 vers Lyon",
+                    name: "N7 - Route Nationale",
+                    distance: 420000,
+                    duration: 13800
+                  },
+                  {
+                    type: 10,
+                    instruction: "Vous êtes arrivé à destination",
+                    name: "Place Bellecour",
+                    distance: 200,
+                    duration: 60
+                  }
+                ]
+              }]
+            }
+          }]
+        }
+      },
+      min_tolls: {
+        cost: 38.20,
+        duration: 13200, // 3h40 en secondes
+        toll_count: 2,
+        route: {
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
+            },
+            properties: {
+              segments: [{
+                steps: [
+                  {
+                    type: 11,
+                    instruction: "Départ de Paris",
+                    name: "Rue de Rivoli",
+                    distance: 0,
+                    duration: 0
+                  },
+                  {
+                    type: 1,
+                    instruction: "Tourner à droite sur A6",
+                    name: "A6",
+                    distance: 1200,
+                    duration: 90
+                  },
+                  {
+                    type: 7,
+                    instruction: "Prendre le rond-point, 2ème sortie",
+                    name: "Rond-point de Fontainebleau",
+                    distance: 300,
+                    duration: 45
+                  },
+                  {
+                    type: 6,
+                    instruction: "Continuer sur A6 vers Lyon",
+                    name: "A6",
+                    distance: 380000,
+                    duration: 12600
+                  },
+                  {
+                    type: 10,
+                    instruction: "Vous êtes arrivé à destination",
+                    name: "Place Bellecour",
+                    distance: 150,
+                    duration: 45
+                  }
+                ]
+              }]
+            }
+          }]
+        }
+      }
+    };
+    
+    setSmartRouteData(testData);
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
       <Header />
@@ -283,8 +534,7 @@ function App() {
           <div className="bg-red-100 text-red-700 px-4 py-2 rounded mb-4">
             {error}
           </div>
-        )}
-        <RouteCalculationBox
+        )}        <RouteCalculationBox
           departure={departure}
           setDeparture={handleDepartureChange}
           departureSuggestions={departureSuggestions}
@@ -303,6 +553,12 @@ function App() {
           setDestinationFeature={setDestinationFeature}
           maxTolls={maxTolls}
           setMaxTolls={setMaxTolls}
+          maxBudget={maxBudget}
+          setMaxBudget={setMaxBudget}
+          maxBudgetPercent={maxBudgetPercent}
+          setMaxBudgetPercent={setMaxBudgetPercent}
+          routeOptimizationType={routeOptimizationType}
+          setRouteOptimizationType={setRouteOptimizationType}
           loading={false}
           handleCalculate={handleCalculate}
           handleFetchRoute={handleFetchRoute}
@@ -310,21 +566,36 @@ function App() {
           handleFetchTolls={handleFetchTolls}
           handleClearTolls={handleClearTolls}
           handleFetchOrs={handleFetchOrs}
-          handleFetchOrsPost={handleFetchOrsPost}
-          handleFetchSmartRoute={handleFetchSmartRoute}
+          handleFetchOrsPost={handleFetchOrsPost}          handleFetchSmartRoute={handleFetchSmartRoute}
         />
+        {/* Composant RouteOptions commenté car non utilisé
         <RouteOptions
           routesData={routesData}
           selectedRoute={selectedRoute}
           onSelectRoute={handleSelectRoute}
           customRoute={customRoute}
         />
+        */}
         <MapView
           position={position}
           geoJSONData={geoJSONData}
           tolls={uniqueTolls}
         />
+        <RouteInstructions routesData={smartRouteData} />
         <MapDetails route={customRoute} visible={mapDetailsVisible} />
+
+        {/* Bouton de test temporaire pour RouteInstructions */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="text-sm text-yellow-800 mb-2">
+            <strong>Test du composant RouteInstructions :</strong>
+          </div>
+          <button
+            onClick={addTestData}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium"
+          >
+            Charger des données de test
+          </button>
+        </div>
       </main>
     </div>
   );

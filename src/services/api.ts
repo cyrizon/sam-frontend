@@ -61,23 +61,44 @@ export const fetchORSRoutePost = async (): Promise<any> => {
     });
 };
 
-// Fonction pour appeler l'endpoint /api/smart-route
-export const fetchSmartRoute = async (): Promise<any> => {
-    return apiFetch<any>("/api/smart-route", {
+// Fonction pour appeler l'endpoint /api/smart-route/tolls
+export const fetchSmartRouteTolls = async (
+    coordinates: [number, number][],
+    max_tolls: number = 2,
+    vehicle_class: string = "c1"
+): Promise<any> => {
+    return apiFetch<any>("/api/smart-route/tolls", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            coordinates: [
-                [7.448595, 48.262004],
-                [5.037793, 47.317743]
-            ],
-            max_tolls: 2,
-            vehicle_class: "c1"
+            coordinates,
+            max_tolls,
+            vehicle_class
         }),
-    }
-    );
+    });
+};
+
+// Fonction pour appeler l'endpoint /api/smart-route/budget
+export const fetchSmartRouteBudget = async (
+    coordinates: [number, number][],
+    max_price?: number,
+    max_price_percent?: number,
+    vehicle_class: string = "c1"
+): Promise<any> => {
+    return apiFetch<any>("/api/smart-route/budget", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            coordinates,
+            max_price,
+            max_price_percent,
+            vehicle_class
+        }),
+    });
 };
 
 
