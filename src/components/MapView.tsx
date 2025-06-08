@@ -1,6 +1,8 @@
 import { MapContainer, TileLayer, GeoJSON, Tooltip } from 'react-leaflet';
 import TollMarker from './TollMarker';
 import type { Toll } from '../types/Toll';
+import { useEffect } from 'react';
+import { useMap } from 'react-leaflet';
 
 type MapViewProps = {
   position: [number, number];
@@ -24,6 +26,33 @@ const formatDuration = (durationInSeconds: number): string => {
   const hours = Math.floor(durationInSeconds / 3600);
   const minutes = Math.floor((durationInSeconds % 3600) / 60);
   return `${hours}h${minutes.toString().padStart(2, '0')}`;
+};
+
+// Composant pour auto-fit la carte sur la bbox des routes
+const MapAutoFit = ({ geoJSONData }: { geoJSONData: any[] }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!geoJSONData || geoJSONData.length === 0) return;
+    // Cherche la première bbox valide
+    let bbox = null;
+    for (const feature of geoJSONData) {
+      if (feature.bbox && Array.isArray(feature.bbox) && feature.bbox.length >= 4) {
+        bbox = feature.bbox;
+        break;
+      }
+    }
+    // Sinon, tente de prendre la bbox globale (cas ORS)
+    if (!bbox && geoJSONData[0]?.bbox && Array.isArray(geoJSONData[0].bbox) && geoJSONData[0].bbox.length >= 4) {
+      bbox = geoJSONData[0].bbox;
+    }
+    if (bbox) {
+      // bbox = [minLon, minLat, maxLon, maxLat]
+      const southWest = [bbox[1], bbox[0]];
+      const northEast = [bbox[3], bbox[2]];
+      map.fitBounds([southWest, northEast], { padding: [40, 40] });
+    }
+  }, [geoJSONData, map]);
+  return null;
 };
 
 const MapView: React.FC<MapViewProps> = ({ position, geoJSONData = [], tolls }) => {
@@ -68,6 +97,7 @@ const MapView: React.FC<MapViewProps> = ({ position, geoJSONData = [], tolls }) 
           zoom={13}
           style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%' }}
         >
+          <MapAutoFit geoJSONData={geoJSONData} />
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
