@@ -141,7 +141,8 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         }
         // Utiliser l'endpoint smart-route/budget
         const budget = maxBudget !== '' ? parseFloat(maxBudget) : undefined;
-        const budgetPercent = maxBudgetPercent !== '' ? parseFloat(maxBudgetPercent) : undefined;
+        // Correction: envoyer le pourcentage sous forme décimale (0-1)
+        const budgetPercent = maxBudgetPercent !== '' ? parseFloat(maxBudgetPercent) / 100 : undefined;
         data = await fetchSmartRouteBudget(coords, budget, budgetPercent, 'c1');
         console.log("Smart Route (Budget) result:", data);
       }
