@@ -47,8 +47,8 @@ const MapAutoFit = ({ geoJSONData }: { geoJSONData: any[] }) => {
     }
     if (bbox) {
       // bbox = [minLon, minLat, maxLon, maxLat]
-      const southWest = [bbox[1], bbox[0]];
-      const northEast = [bbox[3], bbox[2]];
+      const southWest: [number, number] = [bbox[1], bbox[0]];
+      const northEast: [number, number] = [bbox[3], bbox[2]];
       map.fitBounds([southWest, northEast], { padding: [40, 40] });
     }
   }, [geoJSONData, map]);
