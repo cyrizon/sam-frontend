@@ -229,7 +229,7 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       const startCoords = departureFeature.geometry.coordinates;
       const endCoords = destinationFeature.geometry.coordinates;
       try {
-        const data = await fetchRoute(startCoords, endCoords);
+        const data = await fetchRoute([startCoords, endCoords]);
         console.log("Données de l'itinéraire classique :", data);
         
         const geojson = parseRouteToGeoJSON(data);

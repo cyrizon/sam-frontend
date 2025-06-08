@@ -8,14 +8,15 @@ export const fetchMockRoute = async (): Promise<any> => {
     return apiFetch<any>("/api/mokeroute");
 };
 
-// Fonction pour appeler l'endpoint /api/route
+// Fonction pour appeler l'endpoint /api/route (POST uniquement)
 export const fetchRoute = async (
-    start: [number, number],
-    end: [number, number],
-) : Promise<any> => {
-    const startStr = `${start[0]},${start[1]}`;
-    const endStr = `${end[0]},${end[1]}`;
-    return apiFetch<any>(`/api/route?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`);
+  coordinates: [number, number][]
+): Promise<any> => {
+  return apiFetch<any>("/api/route/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ coordinates }),
+  });
 };
 
 export const fetchRouteTollFree = async (
