@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
+import extractRouteSteps from '../utils/extractRouteSteps';
 
 interface RouteInstructionsProps {
   routesData: any; // Les données des itinéraires de l'API smart-route
@@ -10,7 +11,11 @@ const RouteInstructions: React.FC<RouteInstructionsProps> = ({ routesData }) => 
 
   // Extraire les clés des itinéraires disponibles (exclure 'status')
   const availableRoutes = routesData 
-    ? Object.keys(routesData).filter(key => key !== 'status' && routesData[key]?.route)
+    ? Object.keys(routesData).filter(
+        key => key !== 'status' && (
+          routesData[key]?.route || routesData[key]?.routes
+        )
+      )
     : [];
 
   // Sélectionner automatiquement le premier itinéraire si aucun n'est sélectionné
@@ -30,19 +35,9 @@ const RouteInstructions: React.FC<RouteInstructionsProps> = ({ routesData }) => 
   console.log('RouteInstructions: Itinéraires disponibles', availableRoutes);
 
   const selectedRoute = routesData[selectedRouteKey];
-  
-  // Essayer plusieurs chemins possibles pour accéder aux instructions
-  let steps: any[] = [];
-  if (selectedRoute?.route?.features?.[0]?.properties?.segments?.[0]?.steps) {
-    steps = selectedRoute.route.features[0].properties.segments[0].steps;
-  } else if (selectedRoute?.route?.features?.[0]?.properties?.steps) {
-    steps = selectedRoute.route.features[0].properties.steps;
-  } else if (selectedRoute?.steps) {
-    steps = selectedRoute.steps;
-  }
+  // Utilitaire pour extraire les steps quel que soit le format
+  const steps: any[] = extractRouteSteps(selectedRoute);
 
-  console.log('Selected route data:', selectedRoute);
-  console.log('Steps found:', steps);
   // Fonction pour formater la durée
   const formatDuration = (durationInSeconds: number): string => {
     const hours = Math.floor(durationInSeconds / 3600);

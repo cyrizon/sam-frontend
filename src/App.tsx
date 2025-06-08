@@ -27,6 +27,7 @@ interface SmartRouteData {
   cost?: number;
   duration?: number;
   toll_count?: number;
+  distance?: number; // <-- add this line
 }
 
 interface SmartRouteResponse {
@@ -148,54 +149,68 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       // Nouveau traitement pour la structure de réponse avec métadonnées
       const geojsonArray: any[] = [];
       const uniqueRouteHashes = new Set(); // Pour éviter les doublons d'itinéraires identiques
-      
+      const harmonizedSmartRouteData: any = {};
       // Vérifier si les données ont la nouvelle structure (avec cost, duration, toll_count)
       if (data.status) {
         console.log(`Statut de la requête: ${data.status}`);
-        
         // Parcourir les différentes options (fastest, cheapest, min_tolls)
         for (const [key, routeData] of Object.entries(data)) {
           if (key === 'status') continue; // Ignorer le champ status
-          
           const smartRouteData = routeData as SmartRouteData;
           if (smartRouteData && typeof smartRouteData === 'object' && smartRouteData.route) {
             // Créer un hash simple du tracé pour détecter les itinéraires identiques
             const routeCoords = smartRouteData.route.features?.[0]?.geometry?.coordinates;
             const routeHash = JSON.stringify(routeCoords?.length);
-            
             // N'ajouter que si l'itinéraire n'est pas déjà présent
             if (routeCoords && !uniqueRouteHashes.has(routeHash)) {
               uniqueRouteHashes.add(routeHash);
-              
+              // Extraire distance/duration du summary si GeoJSON
+              let distance = smartRouteData.distance;
+              let duration = smartRouteData.duration;
+              if (
+                smartRouteData.route?.features?.[0]?.properties?.summary
+              ) {
+                const summary = smartRouteData.route.features[0].properties.summary;
+                distance = summary.distance;
+                duration = summary.duration;
+              }
               // Ajouter des métadonnées à l'objet route
               const enrichedRoute = {
                 ...smartRouteData.route,
                 _metadata: {
                   type: key, // fastest, cheapest, ou min_tolls
                   cost: smartRouteData.cost,
-                  duration: smartRouteData.duration,
+                  duration,
+                  distance,
                   toll_count: smartRouteData.toll_count
                 }
               };
-              
               geojsonArray.push(enrichedRoute);
+              // Harmoniser pour RouteInstructions
+              harmonizedSmartRouteData[key] = {
+                ...smartRouteData,
+                duration,
+                distance
+              };
             }
           }
         }
       } else {
         // Ancien format (pour la rétrocompatibilité)
-        Object.values(data).forEach((route: any) => {
+        Object.entries(data).forEach(([key, route]: any) => {
           if (route && route.type === "FeatureCollection") {
             geojsonArray.push(route);
+            harmonizedSmartRouteData[key] = route;
           }
         });
       }
-      
       if (geojsonArray.length > 0) {
         setGeoJSONData(geojsonArray);
+        setSmartRouteData(harmonizedSmartRouteData);
         console.log(`${geojsonArray.length} itinéraires uniques chargés`);
       } else {
         setGeoJSONData([]);
+        setSmartRouteData(null);
         setError("Aucun itinéraire trouvé ou tous les itinéraires sont identiques.");
       }
       console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
@@ -235,30 +250,44 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         const geojson = parseRouteToGeoJSON(data);
         if (Array.isArray(geojson)) {
           setGeoJSONData(geojson);
-          // Adapter pour RouteInstructions - mettre dans le même format que smart route
-          setSmartRouteData({ 
-            itineraire: { 
-              route: geojson[0],
-              cost: null,
-              duration: geojson[0]?.features?.[0]?.properties?.segments?.[0]?.duration || null,
-              toll_count: null
-            } 
-          });
         } else if (geojson) {
           setGeoJSONData([geojson]);
-          setSmartRouteData({ 
-            itineraire: { 
-              route: geojson,
-              cost: null,
-              duration: geojson?.features?.[0]?.properties?.segments?.[0]?.duration || null,
-              toll_count: null
-            } 
-          });
         } else {
           setGeoJSONData([]);
-          setSmartRouteData(null);
           setError("Format de données d'itinéraire inconnu.");
         }
+        // Passe la réponse brute à RouteInstructions
+        // Harmoniser distance/duration pour le format classique aussi
+        let distance = data.routes?.[0]?.summary?.distance;
+        let duration = data.routes?.[0]?.summary?.duration;
+        if (data.routes?.[0]?.segments?.[0]?.summary) {
+          // Si ORS classique fournit summary dans segments
+          const summary = data.routes[0].segments[0].summary;
+          distance = summary.distance;
+          duration = summary.duration;
+        } else if (data.routes?.[0]?.features?.[0]?.properties?.summary) {
+          // Si backend renvoie déjà du GeoJSON dans un tableau routes
+          const summary = data.routes[0].features[0].properties.summary;
+          distance = summary.distance;
+          duration = summary.duration;
+        } else if (data.type === 'FeatureCollection' && Array.isArray(data.features) && data.features[0]?.properties?.summary) {
+          // Si la racine est un FeatureCollection (GeoJSON natif)
+          const summary = data.features[0].properties.summary;
+          distance = summary.distance;
+          duration = summary.duration;
+        }
+        // Forcer la conversion en nombre (ou 0 si non défini)
+        distance = typeof distance === 'number' ? distance : Number(distance) || 0;
+        duration = typeof duration === 'number' ? duration : Number(duration) || 0;
+        setSmartRouteData({
+          itineraire: {
+            route: data,
+            duration,
+            distance,
+            cost: data.cost ?? null, // Use backend-provided cost
+            toll_count: data.toll_count ?? null // Use backend-provided toll_count
+          }
+        });
       } catch (error: any) {
         setError(error.message);
       }
