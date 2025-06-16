@@ -6,8 +6,10 @@ import RouteCalculationBox from './components/RouteCalculationBox';
 import MapView from './components/MapView';
 import MapDetails from './components/MapDetails';
 import RouteInstructions from './components/RouteInstructions';
+import LoadingModal from './components/LoadingModal';
 import { useCalculateRoute } from './hooks/useCalculateRoute';
 import { useMap } from './hooks/useMap';
+import { useLoadingModal } from './hooks/useLoadingModal';
 import type { RouteData } from './types/RouteData';
 import type { Toll } from './types/Toll'; // ou './types/Toll' selon l'emplacement du fichier
 import { fetchTolls, fetchSmartRouteTolls, fetchSmartRouteBudget, geocodeAutocomplete, fetchRoute } from './services/api';
@@ -52,10 +54,19 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   const [departureFeature, setDepartureFeature] = useState<any | null>(null);
   const [destinationFeature, setDestinationFeature] = useState<any | null>(null);
   const [smartRouteData, setSmartRouteData] = useState<any>(null); // Nouveau état pour les données brutes de smart-route
-
   const departureAutocompleteLoading = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destinationAutocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { customRoute } = useCalculateRoute(routesData);
+  const { 
+    isVisible: isLoadingModalVisible,
+    isLoading: isRequestLoading,
+    requestStartTime,
+    requestDescription,
+    responseData,
+    startRequest,
+    completeRequest,
+    closeModal: closeLoadingModal
+  } = useLoadingModal();
   // Commenté car RouteOptions n'est plus utilisé
   // const { selectedRoute, mapLoading, mapDetailsVisible, mapRef, handleSelectRoute } = useMap();
   const { mapDetailsVisible } = useMap(); // On garde seulement mapDetailsVisible qui pourrait être utilisé
@@ -70,7 +81,6 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
     setError(null);
     console.log("Itinéraire vidé");
   };
-
   const handleFetchTolls = async () => {
     setError(null);
     let geojsonArray: any[] = [];
@@ -83,6 +93,10 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       setError("Aucun itinéraire disponible pour calculer les péages.");
       return;
     }
+    
+    // Démarrer la modal de chargement
+    startRequest("Recherche des péages sur l'itinéraire");
+    
     try {
       const tolls = await fetchTolls(geojsonArray);
 
@@ -97,8 +111,13 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         }))
       );
       setTollsData(tollsWGS84);
+      
+      // Terminer la modal de chargement avec succès
+      completeRequest({ tolls: tollsWGS84, count: tollsWGS84.flat().length });
     } catch (error: any) {
       setError(error.message);
+      // Terminer la modal de chargement avec erreur
+      completeRequest({ error: error.message, success: false });
     }
   };
 
@@ -109,7 +128,7 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   };
 
 
-    const handleFetchSmartRoute = async () => {
+  const handleFetchSmartRoute = async () => {
     setError(null);
     if (!departureFeature || !destinationFeature) {
       setError("Veuillez sélectionner un point de départ et d'arrivée dans la liste.");
@@ -120,6 +139,12 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       departureFeature.geometry.coordinates,
       destinationFeature.geometry.coordinates
     ];
+    
+    // Démarrer la modal de chargement
+    const requestDesc = routeOptimizationType === 'tolls' 
+      ? `Calcul d'itinéraire optimisé (max ${maxTolls} péages)`
+      : `Calcul d'itinéraire optimisé (budget: ${maxBudget ? maxBudget + '€' : maxBudgetPercent + '%'})`;
+    startRequest(requestDesc);
     
     try {
       let data: SmartRouteResponse;
@@ -213,13 +238,17 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         setGeoJSONData([]);
         setSmartRouteData(null);
         setError("Aucun itinéraire trouvé ou tous les itinéraires sont identiques.");
-      }
-      console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
+      }      console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
       
       // Stocker les données brutes pour les instructions
-      setSmartRouteData(data);
+      setSmartRouteData(harmonizedSmartRouteData);
+      
+      // Terminer la modal de chargement avec succès
+      completeRequest(data);
     } catch (error: any) {
       setError(error.message);
+      // Terminer la modal de chargement avec erreur
+      completeRequest({ error: error.message, success: false });
     }
   };
 
@@ -239,9 +268,10 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
     
     if (hasConstraints) {
       // Utiliser la logique smart route
-      await handleFetchSmartRoute();
-    } else {
+      await handleFetchSmartRoute();    } else {
       // Utiliser la logique de calcul classique et adapter pour les instructions
+      startRequest("Calcul d'itinéraire classique");
+      
       const startCoords = departureFeature.geometry.coordinates;
       const endCoords = destinationFeature.geometry.coordinates;
       try {
@@ -279,8 +309,7 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         }
         // Forcer la conversion en nombre (ou 0 si non défini)
         distance = typeof distance === 'number' ? distance : Number(distance) || 0;
-        duration = typeof duration === 'number' ? duration : Number(duration) || 0;
-        setSmartRouteData({
+        duration = typeof duration === 'number' ? duration : Number(duration) || 0;        setSmartRouteData({
           itineraire: {
             route: data,
             duration,
@@ -289,8 +318,13 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
             toll_count: data.toll_count ?? null // Use backend-provided toll_count
           }
         });
+        
+        // Terminer la modal de chargement avec succès
+        completeRequest(data);
       } catch (error: any) {
         setError(error.message);
+        // Terminer la modal de chargement avec erreur
+        completeRequest({ error: error.message, success: false });
       }
     }
   };
@@ -579,9 +613,18 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
             className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium"
           >
             Charger des données de test
-          </button>
-        </div>
+          </button>        </div>
       </main>
+      
+      {/* Modal de chargement */}
+      <LoadingModal
+        isVisible={isLoadingModalVisible}
+        isLoading={isRequestLoading}
+        requestStartTime={requestStartTime}
+        requestDescription={requestDescription}
+        responseData={responseData}
+        onClose={closeLoadingModal}
+      />
     </div>
   );
 }
