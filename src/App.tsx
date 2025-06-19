@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './styles/App.css';
 import Header from './components/Header';
 import RouteCalculationBox from './components/RouteCalculationBox';
@@ -29,12 +29,27 @@ interface SmartRouteData {
   cost?: number;
   duration?: number;
   toll_count?: number;
-  distance?: number; // <-- add this line
+  distance?: number;
 }
 
 interface SmartRouteResponse {
   status?: string;
-  [key: string]: SmartRouteData | string | undefined;
+  route?: any;
+  distance?: number;
+  duration?: number;
+  cost?: number;
+  toll_count?: number;
+  tolls?: any[];
+  instructions?: any[];
+  toll_info?: any;
+  segments?: any;
+  target_tolls?: number;
+  found_solution?: string;
+  respects_constraint?: boolean;
+  strategy_used?: string;
+  selected_tolls?: string[];
+  toll_systems?: string[];
+  [key: string]: SmartRouteData | string | number | boolean | any[] | any | undefined;
 }
 
 function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
@@ -52,8 +67,9 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   const [destinationAutocompleteLoading, setDestinationAutocompleteLoading] = useState(false);
   const [departureSelected, setDepartureSelected] = useState(false);  const [destinationSelected, setDestinationSelected] = useState(false);
   const [departureFeature, setDepartureFeature] = useState<any | null>(null);
-  const [destinationFeature, setDestinationFeature] = useState<any | null>(null);
-  const [smartRouteData, setSmartRouteData] = useState<any>(null); // Nouveau état pour les données brutes de smart-route
+  const [destinationFeature, setDestinationFeature] = useState<any | null>(null);  const [smartRouteData, setSmartRouteData] = useState<any>(null); // Nouveau état pour les données brutes de smart-route
+  const [showTolls, setShowTolls] = useState<boolean>(false); // État pour afficher/masquer les péages
+
   const departureAutocompleteLoading = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destinationAutocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { customRoute } = useCalculateRoute(routesData);
@@ -72,6 +88,16 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
   const { mapDetailsVisible } = useMap(); // On garde seulement mapDetailsVisible qui pourrait être utilisé
 
   const position: [number, number] = [48.8584, 2.2945]; // Tour Eiffel
+  // Auto-récupération/nettoyage des péages selon la checkbox
+  useEffect(() => {
+    if (showTolls && geoJSONData.length > 0 && !tollsData) {
+      handleFetchTolls();
+    } else if (!showTolls && tollsData) {
+      // Nettoyer les données de péages quand la checkbox est décochée
+      setTollsData(null);
+      setError(null);
+    }
+  }, [showTolls, geoJSONData.length, tollsData]);
 
   console.log(tollsData);
 
@@ -119,12 +145,6 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       // Terminer la modal de chargement avec erreur
       completeRequest({ error: error.message, success: false });
     }
-  };
-
-  const handleClearTolls = () => {
-    setTollsData(null);
-    setError(null);
-    console.log("Données de péages vidées");
   };
 
 
@@ -221,9 +241,17 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
             }
           }       
          }
-        } else if (data.route && data.distance && data.duration) {
-        // Nouveau format d'API avec réponse directe (distance, duration, route, etc.)
-        console.log("Nouveau format d'API détecté:", data);
+      } else if (data.route && data.distance && data.duration) {        // Nouveau format d'API avec réponse directe (distance, duration, route, etc.)
+        console.log("Nouveau format d'API détecté:", data);          console.log("Propriétés reçues du backend:");
+        console.log("- instructions:", data.instructions ? "✅" : "❌");
+        console.log("- cost:", data.cost !== undefined ? "✅" : "❌");
+        console.log("- toll_count:", data.toll_count !== undefined ? "✅" : "❌");
+        console.log("- target_tolls:", data.target_tolls !== undefined ? "✅" : "❌");
+        console.log("- tolls:", data.tolls ? "✅" : "❌");
+        console.log("- toll_info:", data.toll_info ? "✅" : "❌");
+        console.log("- toll_info.selected_tolls:", data.toll_info?.selected_tolls ? "✅" : "❌");
+        console.log("- toll_info.toll_systems:", data.toll_info?.toll_systems ? "✅" : "❌");
+        console.log("- segments:", data.segments ? "✅" : "❌");
         
         const geojsonRoute = parseRouteToGeoJSON(data.route);
         if (geojsonRoute) {
@@ -232,19 +260,25 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
           } else {
             geojsonArray.push(geojsonRoute);
           }
-        }
-        
-        // Adapter les données pour RouteInstructions
+        }        // Adapter les données pour RouteInstructions
         harmonizedSmartRouteData.itineraire = {
           route: data.route,
           distance: data.distance,
           duration: data.duration,
           cost: data.cost || null,
-          toll_count: data.target_tolls || null,
+          toll_count: data.toll_count || data.target_tolls || null,
           found_solution: data.found_solution,
           respects_constraint: data.respects_constraint,
-          strategy_used: data.strategy_used
+          strategy_used: data.strategy_used,
+          instructions: data.instructions || null,  // ✅ Instructions directement dans data
+          selected_tolls: data.toll_info?.selected_tolls || null,  // ✅ Extraction correcte
+          toll_systems: data.toll_info?.toll_systems || null,  // ✅ Extraction correcte
+          tolls: data.tolls || null,  // ✅ Informations détaillées des péages
+          toll_info: data.toll_info || null,  // ✅ Informations complètes de localisation
+          segments: data.segments || null  // ✅ Informations de segments
         };
+        
+        console.log("Données harmonisées pour RouteInstructions:", harmonizedSmartRouteData.itineraire);
       } else {
         // Ancien format (pour la rétrocompatibilité)
         Object.entries(data).forEach(([key, route]: any) => {
@@ -276,10 +310,13 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
     }
   };
 
-
   // Fonction combinée pour le calcul d'itinéraire optimisé
   const handleCalculateOptimized = async () => {
     setError(null);
+    
+    // Vider automatiquement la route précédente avant de calculer la nouvelle
+    handleClearRoute();
+    
     if (!departureFeature || !destinationFeature) {
       setError("Veuillez sélectionner un point de départ et d'arrivée dans la liste.");
       return;
@@ -433,12 +470,9 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
           setMaxBudget={setMaxBudget}
           maxBudgetPercent={maxBudgetPercent}
           setMaxBudgetPercent={setMaxBudgetPercent}
-          routeOptimizationType={routeOptimizationType}
-          setRouteOptimizationType={setRouteOptimizationType}
-          handleCalculateOptimized={handleCalculateOptimized}
-          handleClearRoute={handleClearRoute}
-          handleFetchTolls={handleFetchTolls}
-          handleClearTolls={handleClearTolls}
+          routeOptimizationType={routeOptimizationType}          setRouteOptimizationType={setRouteOptimizationType}          handleCalculateOptimized={handleCalculateOptimized}
+          showTolls={showTolls}
+          setShowTolls={setShowTolls}
         />
         {/* Composant RouteOptions commenté car non utilisé
         <RouteOptions
@@ -447,11 +481,10 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
           onSelectRoute={handleSelectRoute}
           customRoute={customRoute}
         />
-        */}
-        <MapView
+        */}        <MapView
           position={position}
           geoJSONData={geoJSONData}
-          tolls={uniqueTolls}
+          tolls={showTolls ? uniqueTolls : []}
         />
         <RouteInstructions routesData={smartRouteData} />
         <MapDetails route={customRoute} visible={mapDetailsVisible} />      </main>

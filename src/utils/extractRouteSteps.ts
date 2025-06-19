@@ -5,6 +5,11 @@
 function findSteps(obj: any): any[] {
   if (!obj || typeof obj !== 'object') return [];
   
+  // Nouveau format d'API optimisé: instructions directement dans l'objet
+  if (obj.instructions && Array.isArray(obj.instructions)) {
+    return obj.instructions;
+  }
+  
   // Nouveau format d'API: route.features[0].properties.instructions
   if (obj.route?.features?.[0]?.properties?.instructions && Array.isArray(obj.route.features[0].properties.instructions)) {
     return obj.route.features[0].properties.instructions;
@@ -23,11 +28,6 @@ function findSteps(obj: any): any[] {
   // Fallbacks
   if (obj.steps && Array.isArray(obj.steps)) {
     return obj.steps;
-  }
-  
-  // Instructions directement dans les propriétés
-  if (obj.instructions && Array.isArray(obj.instructions)) {
-    return obj.instructions;
   }
   
   // Recursively search all object values

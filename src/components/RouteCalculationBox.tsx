@@ -23,12 +23,10 @@ interface RouteCalculationBoxProps {
   maxBudget: string;
   setMaxBudget: (value: string) => void;
   maxBudgetPercent: string;
-  setMaxBudgetPercent: (value: string) => void;
-  routeOptimizationType: 'tolls' | 'budget';
+  setMaxBudgetPercent: (value: string) => void;  routeOptimizationType: 'tolls' | 'budget';
   setRouteOptimizationType: (value: 'tolls' | 'budget') => void;
-  handleClearRoute: () => void;
-  handleFetchTolls: () => void;
-  handleClearTolls: () => void;
+  showTolls: boolean;
+  setShowTolls: (show: boolean) => void;
   handleCalculateOptimized: () => void;
 }
 
@@ -53,13 +51,10 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
   setMaxTolls,
   maxBudget,
   setMaxBudget,
-  maxBudgetPercent,
-  setMaxBudgetPercent,
-  routeOptimizationType,
+  maxBudgetPercent,  setMaxBudgetPercent,  routeOptimizationType,
   setRouteOptimizationType,
-  handleClearRoute,
-  handleFetchTolls,
-  handleClearTolls,
+  showTolls,
+  setShowTolls,
   handleCalculateOptimized,
 }) => {
   // Fonction pour valider les entrées numériques
@@ -263,36 +258,24 @@ const RouteCalculationBox: React.FC<RouteCalculationBoxProps> = ({
             <span className="text-lg">Calculer itinéraire optimisé</span>
             <i className="fas fa-arrow-right ml-1"></i>
           </button>
-        </div>
+          </div>
 
-        {/* Clear route */}
-        <div>
-          <button
-            onClick={handleClearRoute}
-            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
-          >
-            Vider l'itinéraire
-          </button>
-        </div>
-
-        {/* Show tolls on route */}
-        <div>
-          <button
-            onClick={handleFetchTolls}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition shadow-md flex items-center justify-center"
-          >
-            Afficher les péages
-          </button>
-        </div>
-
-        {/* Clear tolls */}
-        <div>
-          <button
-            onClick={handleClearTolls}
-            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition shadow-md flex items-center justify-center"
-          >
-            Vider la liste des péages
-          </button>
+        {/* Filtres section */}
+        <div className="bg-gray-50 p-4 rounded-lg border">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtres d'affichage</h3>
+          
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="showTollsCheckbox"
+              checked={showTolls}
+              onChange={(e) => setShowTolls(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <label htmlFor="showTollsCheckbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Afficher les péages sur la carte
+            </label>
+          </div>
         </div>
       </div>
     </div>
