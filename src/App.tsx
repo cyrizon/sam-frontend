@@ -219,8 +219,32 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
                 distance
               };
             }
+          }       
+         }
+        } else if (data.route && data.distance && data.duration) {
+        // Nouveau format d'API avec réponse directe (distance, duration, route, etc.)
+        console.log("Nouveau format d'API détecté:", data);
+        
+        const geojsonRoute = parseRouteToGeoJSON(data.route);
+        if (geojsonRoute) {
+          if (Array.isArray(geojsonRoute)) {
+            geojsonArray.push(...geojsonRoute);
+          } else {
+            geojsonArray.push(geojsonRoute);
           }
         }
+        
+        // Adapter les données pour RouteInstructions
+        harmonizedSmartRouteData.itineraire = {
+          route: data.route,
+          distance: data.distance,
+          duration: data.duration,
+          cost: data.cost || null,
+          toll_count: data.target_tolls || null,
+          found_solution: data.found_solution,
+          respects_constraint: data.respects_constraint,
+          strategy_used: data.strategy_used
+        };
       } else {
         // Ancien format (pour la rétrocompatibilité)
         Object.entries(data).forEach(([key, route]: any) => {
@@ -238,10 +262,10 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         setGeoJSONData([]);
         setSmartRouteData(null);
         setError("Aucun itinéraire trouvé ou tous les itinéraires sont identiques.");
-      }      console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
+      }
       
-      // Stocker les données brutes pour les instructions
-      setSmartRouteData(harmonizedSmartRouteData);
+      console.log("Données GeoJSON traitées (Smart Route):", geojsonArray);
+      console.log("Données harmonisées pour RouteInstructions:", harmonizedSmartRouteData);
       
       // Terminer la modal de chargement avec succès
       completeRequest(data);
@@ -378,177 +402,6 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
         ).values()
       ) as Toll[]
     : [];
-
-  // Test data pour RouteInstructions
-  const addTestData = () => {
-    const testData = {
-      status: "success",
-      fastest: {
-        cost: 45.60,
-        duration: 12600, // 3h30 en secondes
-        toll_count: 3,
-        route: {
-          type: "FeatureCollection",
-          features: [{
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
-            },
-            properties: {
-              segments: [{
-                steps: [
-                  {
-                    type: 11,
-                    instruction: "Départ de Paris",
-                    name: "Rue de Rivoli",
-                    distance: 0,
-                    duration: 0
-                  },
-                  {
-                    type: 1,
-                    instruction: "Tourner à droite sur Boulevard Saint-Germain",
-                    name: "Boulevard Saint-Germain",
-                    distance: 500,
-                    duration: 60
-                  },
-                  {
-                    type: 6,
-                    instruction: "Continuer tout droit sur A6 vers Lyon",
-                    name: "A6 - Autoroute du Soleil",
-                    distance: 350000,
-                    duration: 10800
-                  },
-                  {
-                    type: 5,
-                    instruction: "Prendre légèrement à droite vers A7",
-                    name: "A7",
-                    distance: 120000,
-                    duration: 1200
-                  },
-                  {
-                    type: 10,
-                    instruction: "Vous êtes arrivé à destination",
-                    name: "Place Bellecour",
-                    distance: 100,
-                    duration: 30
-                  }
-                ]
-              }]
-            }
-          }]
-        }
-      },
-      cheapest: {
-        cost: 32.40,
-        duration: 14400, // 4h en secondes
-        toll_count: 1,
-        route: {
-          type: "FeatureCollection",
-          features: [{
-            type: "Feature",
-            geometry: {
-              type: "LineString", 
-              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
-            },
-            properties: {
-              segments: [{
-                steps: [
-                  {
-                    type: 11,
-                    instruction: "Départ de Paris",
-                    name: "Rue de Rivoli",
-                    distance: 0,
-                    duration: 0
-                  },
-                  {
-                    type: 0,
-                    instruction: "Tourner à gauche sur les Quais de Seine",
-                    name: "Quai de la Mégisserie",
-                    distance: 800,
-                    duration: 120
-                  },
-                  {
-                    type: 6,
-                    instruction: "Prendre la N7 vers Lyon",
-                    name: "N7 - Route Nationale",
-                    distance: 420000,
-                    duration: 13800
-                  },
-                  {
-                    type: 10,
-                    instruction: "Vous êtes arrivé à destination",
-                    name: "Place Bellecour",
-                    distance: 200,
-                    duration: 60
-                  }
-                ]
-              }]
-            }
-          }]
-        }
-      },
-      min_tolls: {
-        cost: 38.20,
-        duration: 13200, // 3h40 en secondes
-        toll_count: 2,
-        route: {
-          type: "FeatureCollection",
-          features: [{
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [[2.3522, 48.8566], [4.8357, 45.7640]]
-            },
-            properties: {
-              segments: [{
-                steps: [
-                  {
-                    type: 11,
-                    instruction: "Départ de Paris",
-                    name: "Rue de Rivoli",
-                    distance: 0,
-                    duration: 0
-                  },
-                  {
-                    type: 1,
-                    instruction: "Tourner à droite sur A6",
-                    name: "A6",
-                    distance: 1200,
-                    duration: 90
-                  },
-                  {
-                    type: 7,
-                    instruction: "Prendre le rond-point, 2ème sortie",
-                    name: "Rond-point de Fontainebleau",
-                    distance: 300,
-                    duration: 45
-                  },
-                  {
-                    type: 6,
-                    instruction: "Continuer sur A6 vers Lyon",
-                    name: "A6",
-                    distance: 380000,
-                    duration: 12600
-                  },
-                  {
-                    type: 10,
-                    instruction: "Vous êtes arrivé à destination",
-                    name: "Place Bellecour",
-                    distance: 150,
-                    duration: 45
-                  }
-                ]
-              }]
-            }
-          }]
-        }
-      }
-    };
-    
-    setSmartRouteData(testData);
-  };
-
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
       <Header />
@@ -601,20 +454,7 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
           tolls={uniqueTolls}
         />
         <RouteInstructions routesData={smartRouteData} />
-        <MapDetails route={customRoute} visible={mapDetailsVisible} />
-
-        {/* Bouton de test temporaire pour RouteInstructions */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="text-sm text-yellow-800 mb-2">
-            <strong>Test du composant RouteInstructions :</strong>
-          </div>
-          <button
-            onClick={addTestData}
-            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium"
-          >
-            Charger des données de test
-          </button>        </div>
-      </main>
+        <MapDetails route={customRoute} visible={mapDetailsVisible} />      </main>
       
       {/* Modal de chargement */}
       <LoadingModal

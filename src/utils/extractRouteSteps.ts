@@ -4,18 +4,32 @@
 // Helper: recursively search for steps in any nested object
 function findSteps(obj: any): any[] {
   if (!obj || typeof obj !== 'object') return [];
+  
+  // Nouveau format d'API: route.features[0].properties.instructions
+  if (obj.route?.features?.[0]?.properties?.instructions && Array.isArray(obj.route.features[0].properties.instructions)) {
+    return obj.route.features[0].properties.instructions;
+  }
+  
   // ORS classic: routes[0].segments[0].steps
   if (Array.isArray(obj.routes) && obj.routes[0]?.segments?.[0]?.steps) {
     return obj.routes[0].segments[0].steps;
   }
+  
   // smart_route: route.features[0].properties.segments[0].steps
   if (obj.route?.features?.[0]?.properties?.segments?.[0]?.steps) {
     return obj.route.features[0].properties.segments[0].steps;
   }
+  
   // Fallbacks
   if (obj.steps && Array.isArray(obj.steps)) {
     return obj.steps;
   }
+  
+  // Instructions directement dans les propriétés
+  if (obj.instructions && Array.isArray(obj.instructions)) {
+    return obj.instructions;
+  }
+  
   // Recursively search all object values
   for (const value of Object.values(obj)) {
     if (typeof value === 'object') {
