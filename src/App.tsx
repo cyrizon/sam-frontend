@@ -119,25 +119,53 @@ function App() {  const [geoJSONData, setGeoJSONData] = useState<any[]>([]);
       setError("Aucun itinéraire disponible pour calculer les péages.");
       return;
     }
-    
     // Démarrer la modal de chargement
     startRequest("Recherche des péages sur l'itinéraire");
-    
     try {
       const tolls = await fetchTolls(geojsonArray);
-
-      // Correction : gérer une liste de listes
-      const tollsWGS84 = tolls.map((tollList: any[]) =>
-        tollList.map((toll: any) => ({
-          id: toll.id,
-          nom: toll.nom || toll.id || "Péage",
-          autoroute: toll.autoroute || "",
-          latitude: toll.latitude ?? toll.lat,
-          longitude: toll.longitude ?? toll.lon,
-        }))
-      );
+      // Correction : gérer à la fois un tableau plat ou un tableau de tableaux
+      let tollsWGS84: any[] = [];
+      if (Array.isArray(tolls) && tolls.length > 0) {
+        if (Array.isArray(tolls[0])) {
+          // Cas multi-trajets : tableau de tableaux
+          tollsWGS84 = tolls.map((tollList: any[]) =>
+            tollList
+              .filter((toll: any) => Number.isFinite(Number(toll.latitude)) && Number.isFinite(Number(toll.longitude)))
+              .map((toll: any) => ({
+                id: toll.id,
+                nom: toll.nom || toll.id || "Péage",
+                autoroute: toll.autoroute || "",
+                latitude: Number(toll.latitude),
+                longitude: Number(toll.longitude),
+                operator: toll.operator,
+                type: toll.type,
+                distance_route: toll.distance_route,
+              }))
+          );
+        } else {
+          // Cas unique : tableau plat
+          tollsWGS84 = [
+            tolls
+              .filter((toll: any) => Number.isFinite(Number(toll.latitude)) && Number.isFinite(Number(toll.longitude)))
+              .map((toll: any) => ({
+                id: toll.id,
+                nom: toll.nom || toll.id || "Péage",
+                autoroute: toll.autoroute || "",
+                latitude: Number(toll.latitude),
+                longitude: Number(toll.longitude),
+                operator: toll.operator,
+                type: toll.type,
+                distance_route: toll.distance_route,
+              }))
+          ];
+        }
+      } else {
+        tollsWGS84 = [[]];
+      }
+      // Log pour debug
+      console.log('Tolls reçus du backend:', tolls);
+      console.log('Tolls après mapping/filter:', tollsWGS84);
       setTollsData(tollsWGS84);
-      
       // Terminer la modal de chargement avec succès
       completeRequest({ tolls: tollsWGS84, count: tollsWGS84.flat().length });
     } catch (error: any) {
