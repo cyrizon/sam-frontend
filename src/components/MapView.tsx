@@ -91,11 +91,19 @@ const MapView: React.FC<MapViewProps> = ({ position, geoJSONData = [], tolls }) 
         </div>
       )}
       
-      <div className="relative" style={{ width: '100%', paddingBottom: '60%' }}>
+      <div 
+        className="relative w-full h-96 sm:h-[500px] lg:h-[600px]" 
+        style={{ 
+          minHeight: '400px' // Sécurité supplémentaire
+        }}
+      >
         <MapContainer
           center={position}
           zoom={13}
-          style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%' }}
+          className="absolute inset-0 w-full h-full rounded-lg"
+          style={{ 
+            minHeight: '400px' // Hauteur minimale pour mobile
+          }}
         >
           <MapAutoFit geoJSONData={geoJSONData} />
           <TileLayer
